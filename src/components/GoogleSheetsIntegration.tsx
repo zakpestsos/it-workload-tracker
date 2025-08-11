@@ -10,6 +10,7 @@ export const GoogleSheetsIntegration: React.FC<GoogleSheetsIntegrationProps> = (
   onSyncComplete,
   onError
 }) => {
+  console.log('GoogleSheetsIntegration component rendering...');
   const [isConnected, setIsConnected] = useState(false);
   const [isConfigured, setIsConfigured] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -156,7 +157,7 @@ export const GoogleSheetsIntegration: React.FC<GoogleSheetsIntegrationProps> = (
               backgroundColor: isConnected ? '#22c55e' : '#ef4444'
             }}
           />
-          <strong>Google Sheets Integration</strong>
+          <strong>Google Sheets Integration v2</strong>
           {lastSync && (
             <span className="muted" style={{ fontSize: '11px' }}>
               Last sync: {lastSync.toLocaleTimeString()}

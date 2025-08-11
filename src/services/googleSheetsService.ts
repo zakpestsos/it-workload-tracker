@@ -20,8 +20,8 @@ class GoogleSheetsService {
   private config: SheetsConfig | null = null;
   private isAuthenticated = false;
   private syncInterval: NodeJS.Timeout | null = null;
-  private readonly CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-  private readonly API_KEY = import.meta.env.VITE_GOOGLE_API_KEY || '';
+  private readonly CLIENT_ID = '304831967056-kvdtr66m0ta8lm6gin3gf4f5q0naf47n.apps.googleusercontent.com';
+  private readonly API_KEY = 'AIzaSyARpNQLLER7nub09yNmcn4ROZMYG2ZEo48';
   
   // Sheet names for different data types
   private readonly SHEET_NAMES = {
