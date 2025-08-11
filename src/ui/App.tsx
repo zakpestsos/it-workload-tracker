@@ -467,14 +467,12 @@ export const App: React.FC = () => {
       </header>
 
       <section className="panel" style={{ marginBottom: 12 }}>
-        <GoogleSheetsIntegration 
+        <GoogleSheetsIntegration
           onSyncComplete={() => {
-            // Refresh data from sheets when sync completes
             loadFromSheets();
           }}
           onError={(error) => {
             console.error('Google Sheets error:', error);
-            // Could add toast notifications here
           }}
         />
       </section>
