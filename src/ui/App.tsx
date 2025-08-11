@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { GoogleSheetsIntegration } from '../components/GoogleSheetsIntegration';
+import { googleSheetsService } from '../services/googleSheetsService';
 
 type BucketKey = 'profiles' | 'contracts' | 'projects';
 
-type WorkItem = {
+export type WorkItem = {
   id: string;
   name: string;
   owner: string;
@@ -11,9 +13,12 @@ type WorkItem = {
   startDate?: string; // ISO
   dueDate?: string; // ISO
   notes?: string;
+  progress?: number;
+  createdAt?: string;
+  collapsed?: boolean;
 };
 
-type TicketsSummary = {
+export type TicketSummary = {
   total: number;
   completed: number;
   open: number;
@@ -29,7 +34,7 @@ type Store = {
   profiles: WorkItem[];
   contracts: WorkItem[];
   projects: WorkItem[];
-  tickets?: TicketsSummary;
+  tickets?: TicketSummary;
 };
 
 const defaultStore: Store = {
@@ -354,6 +359,81 @@ export const App: React.FC = () => {
     setStore(s => ({ ...s, tickets: { total: 0, completed: 0, open: 0, pending: 0 } }));
   }
 
+  // Google Sheets Integration Functions
+  async function loadFromSheets() {
+    if (!googleSheetsService.isConnected()) return;
+    
+    try {
+      const [profiles, contracts, projects, tickets] = await Promise.all([
+        googleSheetsService.loadWorkloadItems('profiles'),
+        googleSheetsService.loadWorkloadItems('contracts'), 
+        googleSheetsService.loadWorkloadItems('projects'),
+        googleSheetsService.loadTicketsSummary()
+      ]);
+
+      setStore(s => ({
+        ...s,
+        profiles: profiles.length > 0 ? profiles : s.profiles,
+        contracts: contracts.length > 0 ? contracts : s.contracts,
+        projects: projects.length > 0 ? projects : s.projects,
+        tickets: tickets || s.tickets
+      }));
+    } catch (error) {
+      console.error('Error loading from Google Sheets:', error);
+    }
+  }
+
+  async function syncToSheets() {
+    if (!googleSheetsService.isConnected()) return;
+
+    try {
+      await Promise.all([
+        googleSheetsService.syncWorkloadItems('profiles', store.profiles),
+        googleSheetsService.syncWorkloadItems('contracts', store.contracts),
+        googleSheetsService.syncWorkloadItems('projects', store.projects),
+        store.tickets ? googleSheetsService.syncTicketsSummary(store.tickets) : Promise.resolve()
+      ]);
+    } catch (error) {
+      console.error('Error syncing to Google Sheets:', error);
+    }
+  }
+
+  // Set up event listeners for Google Sheets sync
+  useEffect(() => {
+    const handleSyncToSheets = () => syncToSheets();
+    const handleLoadFromSheets = () => loadFromSheets();
+
+    window.addEventListener('sync-to-sheets', handleSyncToSheets);
+    window.addEventListener('load-from-sheets', handleLoadFromSheets);
+    
+    return () => {
+      window.removeEventListener('sync-to-sheets', handleSyncToSheets);
+      window.removeEventListener('load-from-sheets', handleLoadFromSheets);
+    };
+  }, [store]);
+
+  // Auto-sync to sheets when data changes (debounced)
+  useEffect(() => {
+    if (googleSheetsService.isConnected()) {
+      const timeoutId = setTimeout(() => {
+        syncToSheets();
+      }, 2000); // Debounce for 2 seconds
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [store]);
+
+  // Load from URL parameter on mount
+  useEffect(() => {
+    const loadFromUrl = async () => {
+      await googleSheetsService.loadFromUrl();
+      if (googleSheetsService.isConnected()) {
+        loadFromSheets();
+      }
+    };
+    loadFromUrl();
+  }, []);
+
   const buckets: { key: BucketKey; label: string }[] = [
     { key: 'projects', label: 'Main Projects' },
     { key: 'profiles', label: 'Profiles' },
@@ -385,6 +465,19 @@ export const App: React.FC = () => {
           <button className="btn danger" onClick={clearAll}>Clear</button>
         </div>
       </header>
+
+      <section className="panel" style={{ marginBottom: 12 }}>
+        <GoogleSheetsIntegration 
+          onSyncComplete={() => {
+            // Refresh data from sheets when sync completes
+            loadFromSheets();
+          }}
+          onError={(error) => {
+            console.error('Google Sheets error:', error);
+            // Could add toast notifications here
+          }}
+        />
+      </section>
 
       <section className="panel" style={{ marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
