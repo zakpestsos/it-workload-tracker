@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>IT Workload Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg: #0b1220;
+        --panel: #0f172a;
+        --muted: #94a3b8;
+        --text: #e2e8f0;
+        --brand: #22c55e;
+        --accent: #60a5fa;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --ring: #334155;
+      }
+      html, body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        background: linear-gradient(135deg, 
+          var(--bg) 0%, 
+          rgba(14,165,233,0.08) 25%, 
+          rgba(99,102,241,0.12) 50%, 
+          rgba(14,165,233,0.08) 75%, 
+          var(--bg) 100%
+        );
+        background-attachment: fixed;
+        min-height: 100vh;
+        color: var(--text);
+      }
+      .container { max-width: 1200px; margin: 24px auto; padding: 0 16px 40px; }
+      header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+      .title { font-weight: 700; font-size: 24px; letter-spacing: 0.2px; }
+      .subtitle {
+        color: var(--muted);
+        font-size: 14px;
+        margin-top: 4px;
+      }
+      .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      .btn { 
+        background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); 
+        border: 1px solid var(--ring); 
+        color: var(--text); 
+        padding: 8px 16px; 
+        border-radius: 8px; 
+        font-weight: 500; 
+        font-size: 13px;
+        letter-spacing: 0.2px; 
+        cursor: pointer; 
+        transition: all 0.2s ease;
+        min-width: 80px;
+        text-align: center;
+      }
+      .btn.sm { padding: 4px 8px; border-radius: 6px; font-weight: 600; min-width: auto; }
+      .btn:hover { 
+        border-color: #60a5fa; 
+        background: rgba(96,165,250,0.1); 
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(96,165,250,0.15);
+      }
+      .btn.primary { 
+        background: linear-gradient(135deg, #22c55e, #16a34a); 
+        border-color: #22c55e; 
+        color: white;
+      }
+      .btn.primary:hover { 
+        background: linear-gradient(135deg, #16a34a, #15803d);
+        box-shadow: 0 4px 12px rgba(34,197,94,0.25);
+      }
+      .btn.danger { 
+        background: linear-gradient(135deg, #ef4444, #dc2626); 
+        border-color: #ef4444; 
+        color: white;
+      }
+      .btn.danger:hover { 
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        box-shadow: 0 4px 12px rgba(239,68,68,0.25);
+      }
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      @media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+      @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+      .panel { background: linear-gradient(180deg, rgba(2,6,23,0.3), rgba(15,23,42,0.6)); border: 1px solid var(--ring); border-radius: 10px; padding: 12px; box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset, 0 8px 18px rgba(0,0,0,0.3); }
+      .panel h2 { margin: 0 0 6px; font-size: 16px; }
+      .panel h2 small { color: var(--muted); font-weight: 500; }
+      .empty { color: var(--muted); font-size: 14px; padding: 12px; border: 1px dashed var(--ring); border-radius: 10px; }
+      .item { border: 1px solid var(--ring); border-radius: 8px; padding: 8px; margin-top: 8px; background: rgba(2,6,23,0.35); }
+      .item-header { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+      .name { font-weight: 600; }
+      .meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 12px; }
+      .badge { border: 1px solid var(--ring); border-radius: 999px; padding: 2px 8px; font-size: 12px; white-space: nowrap; }
+      .progress { height: 6px; background: #0b1220; border: 1px solid var(--ring); border-radius: 999px; overflow: hidden; margin: 6px 0 6px; }
+      .bar { height: 100%; background: linear-gradient(90deg, #22c55e, #3b82f6); width: 0%; transition: width 0.4s ease; }
+      .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; font-size: 13px; color: var(--muted); }
+      .actions { display: flex; gap: 6px; margin-left: auto; }
+      .danger { color: #fecaca; border-color: rgba(239,68,68,0.45); }
+      .warning { color: #fde68a; border-color: rgba(245,158,11,0.45); }
+      .success { color: #bbf7d0; border-color: rgba(34,197,94,0.45); }
+      .form-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr 0.8fr; gap: 8px; }
+      .input, select { 
+        background: rgba(2,6,23,0.6); 
+        color: var(--text); 
+        border: 1px solid var(--ring); 
+        border-radius: 6px; 
+        padding: 6px 8px; 
+        font-size: 13px; 
+        width: 100%; 
+        box-sizing: border-box;
+        transition: all 0.2s ease;
+      }
+      .input:focus, select:focus { 
+        outline: none; 
+        border-color: #60a5fa; 
+        background: rgba(2,6,23,0.8);
+        box-shadow: 0 0 0 2px rgba(96,165,250,0.1);
+      }
+      select { 
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 8px center;
+        background-repeat: no-repeat;
+        background-size: 16px;
+        padding-right: 32px;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+      }
+      select option {
+        background: rgba(2,6,23,0.95);
+        color: var(--text);
+        padding: 8px;
+      }
+      .muted { color: var(--muted); }
+      .workload-table { width: 100%; table-layout: auto; border-collapse: collapse; }
+      .workload-table th { background: rgba(2,6,23,0.5); padding: 6px 4px; border: 1px solid var(--ring); text-align: left; font-size: 11px; font-weight: 600; }
+      .workload-table td { padding: 4px; border: 1px solid var(--ring); vertical-align: middle; }
+      .workload-table .input, .workload-table select { 
+        border: none; 
+        background: rgba(2,6,23,0.4); 
+        padding: 2px 4px; 
+        font-size: 11px; 
+        width: 100%; 
+        border-radius: 4px;
+        transition: all 0.2s ease;
+      }
+      .workload-table .input:focus, .workload-table select:focus {
+        background: rgba(2,6,23,0.7);
+        box-shadow: 0 0 0 1px rgba(96,165,250,0.3);
+      }
+      .workload-table select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 4px center;
+        background-repeat: no-repeat;
+        background-size: 12px;
+        padding-right: 20px;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+      }
+      .workload-table .btn.sm { padding: 1px 4px; font-size: 10px; }
+      .workload-table .toggle-col { width: 30px; }
+      .workload-table .name-col { min-width: 120px; }
+      .workload-table .owner-col { width: 80px; }
+      .workload-table .status-col { width: 90px; }
+      .workload-table .priority-col { width: 70px; }
+      .workload-table .date-col { width: 80px; }
+      .workload-table .progress-col { width: 100px; }
+      .workload-table .actions-col { width: 90px; }
+      .metric { 
+        border: 1px solid var(--ring); 
+        border-radius: 8px; 
+        padding: 12px; 
+        background: rgba(2,6,23,0.35); 
+        text-align: center;
+        min-width: 100px;
+      }
+      .metric .label { 
+        font-size: 11px; 
+        color: var(--muted); 
+        line-height: 1.2; 
+        margin-bottom: 4px;
+        font-weight: 500;
+      }
+      .metric .value { 
+        font-size: 20px; 
+        font-weight: 700; 
+        color: var(--text);
+        line-height: 1;
+      }
+      .section-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+      .section-metrics { display: flex; gap: 6px; align-items: center; }
+      .section-metric { 
+        border: 1px solid var(--ring); 
+        border-radius: 6px; 
+        padding: 6px 8px; 
+        background: rgba(2,6,23,0.25); 
+        text-align: center; 
+        width: 65px; 
+        height: 40px; 
+        display: flex; 
+        flex-direction: column; 
+        justify-content: center; 
+        align-items: center;
+        flex-shrink: 0;
+      }
+      .section-metric .label { 
+        font-size: 11px; 
+        color: var(--muted); 
+        line-height: 1.2; 
+        margin-bottom: 3px; 
+        white-space: nowrap;
+      }
+      .section-metric .value { 
+        font-size: 16px; 
+        font-weight: 700; 
+        color: var(--text); 
+        line-height: 1; 
+        display: block; 
+      }
+      .section-metric.progress .value { color: #60a5fa; }
+      .section-metric.overdue .value { color: #ef4444; }
+      .section-metric.completed .value { color: #22c55e; }
+      .footer-note { color: var(--muted); font-size: 12px; margin-top: 18px; }
+      .print-hide { display: block; }
+      @media print {
+        body { background: white; color: black; }
+        .print-hide { display: none !important; }
+        .panel { box-shadow: none; background: white; border-color: #e5e7eb; }
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/index-CLgmmo8n.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+  </body>
+  </html>
+
+
