@@ -516,6 +516,11 @@ class GoogleSheetsService {
 
   // Check if credentials are properly configured
   isConfigured(): boolean {
+    console.log('Checking config:', { 
+      CLIENT_ID: this.CLIENT_ID, 
+      API_KEY: this.API_KEY ? 'SET' : 'NOT_SET',
+      configured: !!(this.CLIENT_ID && this.API_KEY && this.CLIENT_ID !== 'demo_mode' && this.API_KEY !== 'demo_mode')
+    });
     return !!(this.CLIENT_ID && this.API_KEY && this.CLIENT_ID !== 'demo_mode' && this.API_KEY !== 'demo_mode');
   }
 
