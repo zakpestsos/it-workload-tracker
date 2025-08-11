@@ -157,7 +157,7 @@ export const GoogleSheetsIntegration: React.FC<GoogleSheetsIntegrationProps> = (
               backgroundColor: isConnected ? '#22c55e' : '#ef4444'
             }}
           />
-          <strong>Google Sheets Integration v2</strong>
+          <strong>Google Sheets Integration v3</strong>
           {lastSync && (
             <span className="muted" style={{ fontSize: '11px' }}>
               Last sync: {lastSync.toLocaleTimeString()}
