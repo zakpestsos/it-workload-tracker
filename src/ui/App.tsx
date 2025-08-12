@@ -113,6 +113,18 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
+    console.log('App initialized, exposing debug functions...');
+    
+    // Expose debug functions to window for console access
+    (window as any).debugApp = {
+      loadAllFromSheets,
+      saveAllToSheets,
+      profiles,
+      contracts,
+      projects,
+      tickets
+    };
+    
     const onSync = () => { loadAllFromSheets(); };
     window.addEventListener('sync-to-sheets', onSync as EventListener);
     window.addEventListener('google-sheets-sync', onSync as EventListener);

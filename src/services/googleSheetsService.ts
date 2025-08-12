@@ -726,5 +726,6 @@ declare global {
 
 // Expose service on window for console usage
 if (typeof window !== 'undefined') {
-  window.googleSheetsService = googleSheetsService;
+  (window as any).googleSheetsService = googleSheetsService;
+  console.log('Google Sheets service exposed to window');
 }
