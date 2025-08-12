@@ -264,10 +264,12 @@ export const App: React.FC = () => {
                         padding: '4px 8px',
                         margin: '2px',
                         borderRadius: '4px',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
                       }}
+                      title="Mark as Completed"
                     >
-                      ✓
+                      DONE
                     </button>
                     <button 
                       onClick={() => removeRow(bucketKey, item.id)}
@@ -278,10 +280,12 @@ export const App: React.FC = () => {
                         padding: '4px 8px',
                         margin: '2px',
                         borderRadius: '4px',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
                       }}
+                      title="Delete Item"
                     >
-                      ✕
+                      DEL
                     </button>
                   </td>
                 </tr>
