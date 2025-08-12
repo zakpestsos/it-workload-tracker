@@ -144,6 +144,8 @@ export const App: React.FC = () => {
   }, []);
 
   const renderBucket = (title: string, bucketKey: 'profiles'|'contracts'|'projects', items: WorkItem[], setItems: React.Dispatch<React.SetStateAction<WorkItem[]>>) => {
+    console.log(`Rendering ${title} bucket with ${items.length} items:`, items);
+    
     // Calculate status metrics
     const inProgress = items.filter(item => item.status === 'In Progress').length;
     const completed = items.filter(item => item.status === 'Completed').length;
@@ -155,10 +157,14 @@ export const App: React.FC = () => {
     }).length;
 
     const toggleNotesExpansion = (itemId: string) => {
-      updateField(bucketKey, itemId, 'collapsed', !items.find(i => i.id === itemId)?.collapsed);
+      console.log(`Toggling notes for item ${itemId}`);
+      const item = items.find(i => i.id === itemId);
+      console.log('Current item state:', item);
+      updateField(bucketKey, itemId, 'collapsed', !item?.collapsed);
     };
 
     const markCompleted = (itemId: string) => {
+      console.log(`Marking item ${itemId} as completed`);
       updateField(bucketKey, itemId, 'status', 'Completed');
     };
 
@@ -244,10 +250,14 @@ export const App: React.FC = () => {
                       </div>
                     </td>
                     <td className="actions">
+                      {console.log(`Rendering actions for item ${item.id}`)}
                       <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                         <button 
                           className="btn sm success" 
-                          onClick={() => markCompleted(item.id)}
+                          onClick={() => {
+                            console.log(`Complete button clicked for ${item.id}`);
+                            markCompleted(item.id);
+                          }}
                           style={{ 
                             background: '#22c55e',
                             border: '1px solid #22c55e',
@@ -262,7 +272,10 @@ export const App: React.FC = () => {
                         </button>
                         <button 
                           className="btn sm danger" 
-                          onClick={() => removeRow(bucketKey, item.id)}
+                          onClick={() => {
+                            console.log(`Delete button clicked for ${item.id}`);
+                            removeRow(bucketKey, item.id);
+                          }}
                           style={{ 
                             background: '#ef4444',
                             border: '1px solid #ef4444',
