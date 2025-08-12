@@ -74,12 +74,24 @@ export const GoogleSheetsIntegration: React.FC<GoogleSheetsIntegrationProps> = (
   const handleConnect = async () => {
     try {
       setIsLoading(true);
-      await googleSheetsService.authenticate();
+      console.log('Starting authentication process...');
       
-      // Create new spreadsheet if none exists
-      const spreadsheetId = await googleSheetsService.createWorkloadSheet(
-        `IT Workload Tracker - ${new Date().toLocaleDateString()}`
-      );
+      // Add debug info
+      console.log('Current URL:', window.location.href);
+      console.log('Is configured:', googleSheetsService.isConfigured());
+      
+      await googleSheetsService.authenticate();
+      console.log('Authentication completed');
+      
+      // Check if we're authenticated before proceeding
+      if (!googleSheetsService.isConnected()) {
+        console.log('Creating new spreadsheet...');
+        // Create new spreadsheet if none exists
+        const spreadsheetId = await googleSheetsService.createWorkloadSheet(
+          `IT Workload Tracker - ${new Date().toLocaleDateString()}`
+        );
+        console.log('Spreadsheet created:', spreadsheetId);
+      }
       
       checkConnection();
       onSyncComplete?.();
@@ -88,6 +100,7 @@ export const GoogleSheetsIntegration: React.FC<GoogleSheetsIntegrationProps> = (
       handleSync();
       
     } catch (error) {
+      console.error('Authentication error:', error);
       onError?.(`Failed to connect to Google Sheets: ${error}`);
     } finally {
       setIsLoading(false);
