@@ -47,11 +47,22 @@ export const App: React.FC = () => {
     { id: '3', name: 'Sample Project Task', owner: 'Demo User', status: 'Completed', priority: 'Low', notes: 'Completed sample task' }
   ]);
   const [tickets, setTickets] = useState<TicketSummary | null>(null);
+  const [csvUploadDate, setCsvUploadDate] = useState<string | null>(null);
 
   // CSV Upload functionality for tickets
   const handleTicketsUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // Get the file's last modified date or current date as timestamp
+    const uploadDate = new Date(file.lastModified || Date.now());
+    setCsvUploadDate(uploadDate.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }));
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -60,41 +71,56 @@ export const App: React.FC = () => {
       
       if (lines.length < 2) return;
       
-      // Parse CSV data
-      let totalEmployee = 0;
-      let totalClient = 0;
+      // Parse headers to determine CSV format
+      const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
+      const hasResolvedColumns = headers.includes('employee tickets resolved') || headers.includes('client tickets resolved');
+      
+      console.log('CSV Headers:', headers);
+      console.log('Has resolved columns:', hasResolvedColumns);
+      
+      let employeeTickets = 0;
+      let clientTickets = 0;
       let employeeResolved = 0;
       let clientResolved = 0;
       
+      // Parse data rows
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
         const columns = line.split(',').map(col => col.replace(/"/g, '').trim());
         
-        if (columns.length >= 4) {
-          totalEmployee += parseInt(columns[1]) || 0;
-          totalClient += parseInt(columns[2]) || 0;
+        if (columns.length >= 3) {
+          // Always have: Group, Employee Tickets, Client Tickets
+          employeeTickets += parseInt(columns[1]) || 0;
+          clientTickets += parseInt(columns[2]) || 0;
           
-          // Check if resolved columns exist (newer format)
-          if (columns.length >= 5) {
+          // If resolved columns exist
+          if (hasResolvedColumns && columns.length >= 5) {
             employeeResolved += parseInt(columns[3]) || 0;
             clientResolved += parseInt(columns[4]) || 0;
           }
         }
       }
       
-      const total = totalEmployee + totalClient;
-      const completed = employeeResolved + clientResolved;
-      const open = total - completed;
-      const pending = Math.floor(open * 0.3); // Estimate pending as 30% of open
+      const ticketsOpened = employeeTickets + clientTickets;
+      const ticketsClosed = employeeResolved + clientResolved;
+      const stillOpen = Math.max(0, ticketsOpened - ticketsClosed);
       
+      // Create summary with proper terminology
       const summary: TicketSummary = {
-        total,
-        completed,
-        open,
-        pending
+        total: ticketsOpened,
+        completed: ticketsClosed,
+        open: stillOpen,
+        pending: stillOpen // All non-closed tickets are "pending"
       };
       
-      console.log('Parsed tickets from CSV:', summary);
+      console.log('Parsed tickets from CSV:', {
+        employeeTickets,
+        clientTickets,
+        employeeResolved,
+        clientResolved,
+        summary
+      });
+      
       setTickets(summary);
     };
     reader.readAsText(file);
@@ -378,12 +404,26 @@ export const App: React.FC = () => {
 
       <div style={{ display: 'flex', gap: '24px' }}>
         {/* Left side - Tickets Summary */}
-        <div style={{ width: '200px', flexShrink: 0 }}>
-          <div className="panel" style={{ padding: '16px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px' }}>Tickets Summary</h3>
+        <div style={{ width: '240px', flexShrink: 0 }}>
+          <div className="panel" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>Support Tickets</h3>
+              {csvUploadDate && (
+                <div style={{ 
+                  fontSize: '10px', 
+                  color: 'var(--muted)', 
+                  background: 'rgba(255,255,255,0.05)',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  border: '1px solid var(--ring)'
+                }}>
+                  {csvUploadDate}
+                </div>
+              )}
+            </div>
             
             {/* Upload Button */}
-            <div style={{ marginBottom: '16px' }}>
+            <div style={{ marginBottom: '20px' }}>
               <input
                 type="file"
                 accept=".csv"
@@ -393,39 +433,102 @@ export const App: React.FC = () => {
               />
               <label 
                 htmlFor="tickets-upload" 
-                className="btn sm" 
+                className="btn" 
                 style={{ 
                   display: 'block', 
                   textAlign: 'center', 
                   cursor: 'pointer',
-                  backgroundColor: 'var(--accent)',
-                  borderColor: 'var(--accent)'
+                  background: 'linear-gradient(135deg, var(--accent), #3b82f6)',
+                  borderColor: 'var(--accent)',
+                  fontSize: '13px',
+                  fontWeight: '500'
                 }}
               >
-                Upload CSV
+                📊 Upload CSV Data
               </label>
             </div>
 
-            {/* Vertical Metrics */}
+            {/* Tickets Metrics */}
             {!tickets ? (
-              <div className="empty" style={{ fontSize: '12px', padding: '8px 0' }}>Upload tickets CSV file</div>
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '24px 0', 
+                color: 'var(--muted)', 
+                fontSize: '13px',
+                border: '2px dashed var(--ring)',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>📈</div>
+                <div>Upload your tickets CSV</div>
+                <div style={{ fontSize: '11px', marginTop: '4px' }}>to see analytics</div>
+              </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div className="metric" style={{ padding: '8px', textAlign: 'center' }}>
-                  <div className="label" style={{ fontSize: '11px' }}>Total</div>
-                  <div className="value" style={{ fontSize: '18px', fontWeight: 'bold' }}>{tickets.total ?? 0}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Opened vs Closed Overview */}
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(34,197,94,0.1), rgba(59,130,246,0.1))',
+                  border: '1px solid var(--ring)',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Activity Overview
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+                    <div>
+                      <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#60a5fa' }}>{tickets.total ?? 0}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--muted)' }}>Opened</div>
+                    </div>
+                    <div style={{ color: 'var(--muted)', fontSize: '16px', alignSelf: 'center' }}>→</div>
+                    <div>
+                      <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--brand)' }}>{tickets.completed ?? 0}</div>
+                      <div style={{ fontSize: '10px', color: 'var(--muted)' }}>Closed</div>
+                    </div>
+                  </div>
                 </div>
-                <div className="metric" style={{ padding: '8px', textAlign: 'center' }}>
-                  <div className="label" style={{ fontSize: '11px' }}>Open</div>
-                  <div className="value" style={{ fontSize: '16px' }}>{tickets.open ?? 0}</div>
-                </div>
-                <div className="metric" style={{ padding: '8px', textAlign: 'center' }}>
-                  <div className="label" style={{ fontSize: '11px' }}>Pending</div>
-                  <div className="value" style={{ fontSize: '16px' }}>{tickets.pending ?? 0}</div>
-                </div>
-                <div className="metric" style={{ padding: '8px', textAlign: 'center' }}>
-                  <div className="label" style={{ fontSize: '11px' }}>Completed</div>
-                  <div className="value" style={{ fontSize: '16px', color: 'var(--brand)' }}>{tickets.completed ?? 0}</div>
+
+                {/* Current Status */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Current Status
+                  </div>
+                  
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px',
+                    background: tickets.open > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
+                    border: `1px solid ${tickets.open > 0 ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'}`,
+                    borderRadius: '6px'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '11px', color: 'var(--muted)' }}>Still Open</div>
+                      <div style={{ fontSize: '18px', fontWeight: 'bold', color: tickets.open > 0 ? '#ef4444' : 'var(--brand)' }}>
+                        {tickets.open ?? 0}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '20px' }}>
+                      {tickets.open > 0 ? '⚠️' : '✅'}
+                    </div>
+                  </div>
+
+                  {/* Resolution Rate */}
+                  {tickets.total > 0 && (
+                    <div style={{
+                      padding: '10px 12px',
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid var(--ring)',
+                      borderRadius: '6px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '10px', color: 'var(--muted)', marginBottom: '4px' }}>Resolution Rate</div>
+                      <div style={{ fontSize: '14px', fontWeight: '600' }}>
+                        {Math.round((tickets.completed / tickets.total) * 100)}%
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
