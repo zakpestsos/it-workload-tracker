@@ -723,6 +723,18 @@ class GoogleSheetsService {
       this.saveConfig();
     }
   }
+
+  // Set a specific spreadsheet ID to use
+  async setSpecificSheet(spreadsheetId: string): Promise<void> {
+    console.log(`Setting specific sheet: ${spreadsheetId}`);
+    this.config = {
+      spreadsheetId,
+      apiKey: this.API_KEY,
+      accessToken: window.gapi.client.getToken?.().access_token
+    };
+    this.saveConfig();
+    console.log('Specific sheet configuration saved');
+  }
 }
 
 // Global instance

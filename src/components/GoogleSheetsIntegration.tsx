@@ -83,15 +83,12 @@ export const GoogleSheetsIntegration: React.FC<GoogleSheetsIntegrationProps> = (
       await googleSheetsService.authenticate();
       console.log('Authentication completed');
       
-      // Check if we're authenticated before proceeding
-      if (!googleSheetsService.isConnected()) {
-        console.log('Creating new spreadsheet...');
-        // Create new spreadsheet if none exists
-        const spreadsheetId = await googleSheetsService.createWorkloadSheet(
-          `IT Workload Tracker - ${new Date().toLocaleDateString()}`
-        );
-        console.log('Spreadsheet created:', spreadsheetId);
-      }
+      // Use the specific sheet ID instead of creating new ones
+      const specificSheetId = '1A1MdU3y0nRD8Fzzs-Ojj2VfE-UA903S6b9vuAavEkEI';
+      console.log('Using specific sheet:', specificSheetId);
+      
+      // Set the specific sheet configuration
+      await googleSheetsService.setSpecificSheet(specificSheetId);
       
       checkConnection();
       onSyncComplete?.();

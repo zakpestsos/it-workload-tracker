@@ -154,6 +154,14 @@ export const App: React.FC = () => {
       return due < today && item.status !== 'Completed';
     }).length;
 
+    const toggleNotesExpansion = (itemId: string) => {
+      updateField(bucketKey, itemId, 'collapsed', !items.find(i => i.id === itemId)?.collapsed);
+    };
+
+    const markCompleted = (itemId: string) => {
+      updateField(bucketKey, itemId, 'status', 'Completed');
+    };
+
     return (
       <div className="panel">
         <div className="section-header">
@@ -186,39 +194,117 @@ export const App: React.FC = () => {
                 <th className="priority-col">Priority</th>
                 <th className="date-col">Start</th>
                 <th className="date-col">Due</th>
-                <th style={{width: '150px'}}>Notes</th>
+                <th style={{width: '200px'}}>Notes</th>
                 <th className="actions-col">Actions</th>
               </tr>
             </thead>
             <tbody>
               {items.map(item => (
-                <tr key={item.id}>
-                  <td><input className="input" value={item.name} onChange={e => updateField(bucketKey, item.id, 'name', e.target.value)} placeholder="Title" /></td>
-                  <td><input className="input" value={item.owner} onChange={e => updateField(bucketKey, item.id, 'owner', e.target.value)} placeholder="Owner" /></td>
-                  <td>
-                    <select className="input" value={item.status} onChange={e => updateField(bucketKey, item.id, 'status', e.target.value)}>
-                      <option>Not Started</option>
-                      <option>In Progress</option>
-                      <option>Completed</option>
-                      <option>On Hold</option>
-                      <option>Cancelled</option>
-                    </select>
-                  </td>
-                  <td>
-                    <select className="input" value={item.priority} onChange={e => updateField(bucketKey, item.id, 'priority', e.target.value)}>
-                      <option>Low</option>
-                      <option>Medium</option>
-                      <option>High</option>
-                      <option>Urgent</option>
-                    </select>
-                  </td>
-                  <td><input className="input" type="date" value={item.startDate || ''} onChange={e => updateField(bucketKey, item.id, 'startDate', e.target.value)} /></td>
-                  <td><input className="input" type="date" value={item.dueDate || ''} onChange={e => updateField(bucketKey, item.id, 'dueDate', e.target.value)} /></td>
-                  <td><input className="input" value={item.notes || ''} onChange={e => updateField(bucketKey, item.id, 'notes', e.target.value)} placeholder="Notes" /></td>
-                  <td className="actions">
-                    <button className="btn sm danger" onClick={() => removeRow(bucketKey, item.id)}>Delete</button>
-                  </td>
-                </tr>
+                <React.Fragment key={item.id}>
+                  <tr>
+                    <td><input className="input" value={item.name} onChange={e => updateField(bucketKey, item.id, 'name', e.target.value)} placeholder="Title" /></td>
+                    <td><input className="input" value={item.owner} onChange={e => updateField(bucketKey, item.id, 'owner', e.target.value)} placeholder="Owner" /></td>
+                    <td>
+                      <select className="input" value={item.status} onChange={e => updateField(bucketKey, item.id, 'status', e.target.value)}>
+                        <option>Not Started</option>
+                        <option>In Progress</option>
+                        <option>Completed</option>
+                        <option>On Hold</option>
+                        <option>Cancelled</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select className="input" value={item.priority} onChange={e => updateField(bucketKey, item.id, 'priority', e.target.value)}>
+                        <option>Low</option>
+                        <option>Medium</option>
+                        <option>High</option>
+                        <option>Urgent</option>
+                      </select>
+                    </td>
+                    <td><input className="input" type="date" value={item.startDate || ''} onChange={e => updateField(bucketKey, item.id, 'startDate', e.target.value)} /></td>
+                    <td><input className="input" type="date" value={item.dueDate || ''} onChange={e => updateField(bucketKey, item.id, 'dueDate', e.target.value)} /></td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {item.collapsed ? (
+                          <input 
+                            className="input" 
+                            value={item.notes || ''} 
+                            onChange={e => updateField(bucketKey, item.id, 'notes', e.target.value)} 
+                            placeholder="Click expand for more space"
+                            style={{ width: '140px' }}
+                          />
+                        ) : null}
+                        <button 
+                          className="btn sm" 
+                          onClick={() => toggleNotesExpansion(item.id)}
+                          style={{ padding: '2px 6px', fontSize: '11px' }}
+                        >
+                          {item.collapsed ? '▼' : '▲'}
+                        </button>
+                      </div>
+                    </td>
+                    <td className="actions">
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <button 
+                          className="btn sm success" 
+                          onClick={() => markCompleted(item.id)}
+                          style={{ 
+                            background: '#22c55e',
+                            border: '1px solid #22c55e',
+                            color: 'white',
+                            padding: '4px 8px',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                          }}
+                          title="Mark as Completed"
+                        >
+                          ✓
+                        </button>
+                        <button 
+                          className="btn sm danger" 
+                          onClick={() => removeRow(bucketKey, item.id)}
+                          style={{ 
+                            background: '#ef4444',
+                            border: '1px solid #ef4444',
+                            color: 'white',
+                            padding: '4px 8px',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                          }}
+                          title="Delete Item"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {!item.collapsed && (
+                    <tr>
+                      <td colSpan={8} style={{ padding: '8px', background: 'rgba(2,6,23,0.2)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <label style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '600' }}>Notes:</label>
+                          <textarea
+                            value={item.notes || ''}
+                            onChange={e => updateField(bucketKey, item.id, 'notes', e.target.value)}
+                            placeholder="Add detailed notes here..."
+                            style={{
+                              width: '100%',
+                              minHeight: '80px',
+                              background: 'rgba(2,6,23,0.6)',
+                              color: 'var(--text)',
+                              border: '1px solid var(--ring)',
+                              borderRadius: '6px',
+                              padding: '8px',
+                              fontSize: '13px',
+                              fontFamily: 'inherit',
+                              resize: 'vertical'
+                            }}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
