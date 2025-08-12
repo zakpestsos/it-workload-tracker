@@ -26,18 +26,32 @@ export const GoogleSheetsIntegration: React.FC<GoogleSheetsIntegrationProps> = (
     initializeService();
   }, []);
 
-  useEffect(() => {
-    if (autoSync && isConnected) {
-      const interval = setInterval(handleAutoSync, 30000); // Sync every 30 seconds
-      return () => clearInterval(interval);
-    }
-  }, [autoSync, isConnected]);
+  // Disabled auto-sync to prevent interruptions while editing
+  // useEffect(() => {
+  //   if (autoSync && isConnected) {
+  //     const interval = setInterval(handleAutoSync, 30000); // Sync every 30 seconds
+  //     return () => clearInterval(interval);
+  //   }
+  // }, [autoSync, isConnected]);
 
   const initializeService = async () => {
     try {
       setIsLoading(true);
       await googleSheetsService.initialize();
       checkConnection();
+      // If we just returned from OAuth redirect, we're authenticated but may not
+      // have created the spreadsheet yet. Attempt creation once.
+      if (!googleSheetsService.isConnected()) {
+        try {
+          await googleSheetsService.createWorkloadSheet(
+            `IT Workload Tracker - ${new Date().toLocaleDateString()}`
+          );
+          checkConnection();
+          onSyncComplete?.();
+        } catch {
+          // Ignore if not authenticated yet or user canceled; user can click Connect.
+        }
+      }
     } catch (error) {
       onError?.(`Failed to initialize Google Sheets: ${error}`);
     } finally {
@@ -223,17 +237,7 @@ export const GoogleSheetsIntegration: React.FC<GoogleSheetsIntegrationProps> = (
               </button>
             </div>
 
-            {/* Auto-sync Toggle */}
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
-                <input
-                  type="checkbox"
-                  checked={autoSync}
-                  onChange={(e) => setAutoSync(e.target.checked)}
-                />
-                Auto-sync every 30 seconds
-              </label>
-            </div>
+            {/* Auto-sync disabled to prevent interruptions while editing */}
 
             {/* Sharing Section */}
             <div style={{ marginBottom: '12px' }}>
