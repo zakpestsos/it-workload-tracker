@@ -49,14 +49,20 @@ export const App: React.FC = () => {
   const loadAllFromSheets = async () => {
     setIsBusy(true);
     try {
+      console.log('Starting load from sheets...');
       await googleSheetsService.initialize();
-      await googleSheetsService.loadFromUrl();
+      
+      // Use the specific sheet ID instead of URL parameter
+      const specificSheetId = '1A1MdU3y0nRD8Fzzs-Ojj2VfE-UA903S6b9vuAavEkEI';
+      await googleSheetsService.setSpecificSheet(specificSheetId);
+      
       const [p, c, pr, t] = await Promise.all([
         googleSheetsService.loadWorkloadItems('profiles'),
         googleSheetsService.loadWorkloadItems('contracts'),
         googleSheetsService.loadWorkloadItems('projects'),
         googleSheetsService.loadTicketsSummary()
       ]);
+      console.log('Loaded data:', { profiles: p.length, contracts: c.length, projects: pr.length, tickets: t });
       setProfiles(p);
       setContracts(c);
       setProjects(pr);
@@ -71,7 +77,10 @@ export const App: React.FC = () => {
     try {
       console.log('Starting save to sheets...', { profiles: profiles.length, contracts: contracts.length, projects: projects.length });
       await googleSheetsService.initialize();
-      await googleSheetsService.loadFromUrl();
+      
+      // Use the specific sheet ID instead of URL parameter
+      const specificSheetId = '1A1MdU3y0nRD8Fzzs-Ojj2VfE-UA903S6b9vuAavEkEI';
+      await googleSheetsService.setSpecificSheet(specificSheetId);
       
       console.log('Saving profiles...', profiles);
       await googleSheetsService.syncWorkloadItems('profiles', profiles);
@@ -135,8 +144,11 @@ export const App: React.FC = () => {
     const onSync = () => { loadAllFromSheets(); };
     window.addEventListener('sync-to-sheets', onSync as EventListener);
     window.addEventListener('google-sheets-sync', onSync as EventListener);
-    const hasSheetParam = new URLSearchParams(window.location.search).get('sheet');
-    if (hasSheetParam) loadAllFromSheets();
+    
+    // Always try to load from the specific sheet (ignore URL parameter)
+    console.log('Auto-loading from specific sheet...');
+    loadAllFromSheets();
+    
     return () => {
       window.removeEventListener('sync-to-sheets', onSync as EventListener);
       window.removeEventListener('google-sheets-sync', onSync as EventListener);
