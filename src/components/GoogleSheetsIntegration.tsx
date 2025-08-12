@@ -244,6 +244,7 @@ export const GoogleSheetsIntegration: React.FC<GoogleSheetsIntegrationProps> = (
                   type="email"
                   className="input"
                   placeholder="Enter email address"
+                  aria-label="Email address for sharing"
                   value={shareEmail}
                   onChange={(e) => setShareEmail(e.target.value)}
                   style={{ flex: '1', minWidth: '200px' }}
@@ -252,6 +253,7 @@ export const GoogleSheetsIntegration: React.FC<GoogleSheetsIntegrationProps> = (
                   value={shareRole}
                   onChange={(e) => setShareRole(e.target.value as any)}
                   className="input"
+                  aria-label="Share role"
                   style={{ width: 'auto' }}
                 >
                   <option value="reader">View Only</option>

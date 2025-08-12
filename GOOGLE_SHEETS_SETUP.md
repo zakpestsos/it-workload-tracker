@@ -92,3 +92,4 @@ The integration creates 5 sheets:
 - Users only access their own sheets
 - Granular permissions (read/write/comment)
 - Data stays in your Google account
+

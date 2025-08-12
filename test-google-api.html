@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px 0; }
+        #result { margin-top: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Google Sheets API Test</h1>
+    <p>Current URL: <span id="currentUrl"></span></p>
+    <button id="testBtn" disabled>Test API Connection</button>
+    <div id="result"></div>
+
+    <script>
+        const CLIENT_ID = '304831967056-kvdtr66m0ta8lm6gin3gf4f5q0naf47n.apps.googleusercontent.com';
+        const API_KEY = 'AIzaSyARpNQLLER7nub09yNmcn4ROZMYG2ZEo48';
+
+        document.getElementById('currentUrl').textContent = window.location.href;
+
+        function log(message, type = 'info') {
+            const div = document.getElementById('result');
+            const p = document.createElement('p');
+            p.className = type;
+            p.innerHTML = message;
+            div.appendChild(p);
+            console.log(message);
+        }
+
+        function initializeGapi() {
+            log('🔄 Loading Google APIs...', 'info');
+            
+            gapi.load('client:auth2', async () => {
+                try {
+                    log('🔄 Initializing GAPI client...', 'info');
+                    
+                    await gapi.client.init({
+                        apiKey: API_KEY,
+                        clientId: CLIENT_ID,
+                        discoveryDocs: [
+                            'https://sheets.googleapis.com/$discovery/rest?version=v4'
+                        ],
+                        scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file'
+                    });
+                    
+                    log('✅ GAPI initialized successfully!', 'success');
+                    
+                    // Enable the test button
+                    const testBtn = document.getElementById('testBtn');
+                    testBtn.disabled = false;
+                    
+                    // Test authentication
+                    const authInstance = gapi.auth2.getAuthInstance();
+                    
+                    // Check if already signed in
+                    if (authInstance.isSignedIn.get()) {
+                        log('✅ Already signed in!', 'success');
+                    }
+                    
+                    testBtn.onclick = async () => {
+                        try {
+                            log('🔄 Starting authentication...', 'info');
+                            testBtn.disabled = true;
+                            
+                            if (!authInstance.isSignedIn.get()) {
+                                await authInstance.signIn();
+                            }
+                            
+                            const user = authInstance.currentUser.get();
+                            const profile = user.getBasicProfile();
+                            
+                            log(`✅ Authentication successful! Welcome ${profile.getName()}`, 'success');
+                            log(`📧 Email: ${profile.getEmail()}`, 'info');
+                            
+                        } catch (error) {
+                            log(`❌ Auth error: ${error.error || error.message || error}`, 'error');
+                            console.error('Full error:', error);
+                        } finally {
+                            testBtn.disabled = false;
+                        }
+                    };
+                    
+                } catch (error) {
+                    log(`❌ GAPI init error: ${error.error || error.message || error}`, 'error');
+                    console.error('Full GAPI error:', error);
+                }
+            });
+        }
+
+        // Check if we're running on localhost
+        if (window.location.protocol === 'file:') {
+            log('❌ Cannot run from file:// protocol. Please run through a web server (like npm run dev)', 'error');
+        } else {
+            log(`🌐 Running on: ${window.location.origin}`, 'info');
+        }
+    </script>
+    <script src="https://apis.google.com/js/api.js" onload="initializeGapi()"></script>
+</body>
+</html>

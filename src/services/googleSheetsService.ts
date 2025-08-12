@@ -20,8 +20,9 @@ class GoogleSheetsService {
   private config: SheetsConfig | null = null;
   private isAuthenticated = false;
   private syncInterval: NodeJS.Timeout | null = null;
-  private readonly CLIENT_ID = '304831967056-kvdtr66m0ta8lm6gin3gf4f5q0naf47n.apps.googleusercontent.com';
-  private readonly API_KEY = 'AIzaSyARpNQLLER7nub09yNmcn4ROZMYG2ZEo48';
+  // Prefer environment variables provided by Vite; fall back to defined values if present
+  private readonly CLIENT_ID: string = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '304831967056-kvdtr66m0ta8lm6gin3gf4f5q0naf47n.apps.googleusercontent.com';
+  private readonly API_KEY: string = (import.meta as any).env?.VITE_GOOGLE_API_KEY || 'AIzaSyARpNQLLER7nub09yNmcn4ROZMYG2ZEo48';
   
   // Sheet names for different data types
   private readonly SHEET_NAMES = {
@@ -50,7 +51,8 @@ class GoogleSheetsService {
         const script = document.createElement('script');
         script.src = 'https://apis.google.com/js/api.js';
         script.onload = () => {
-          window.gapi.load('auth2:client', () => {
+          // Load both the client and auth2 libraries
+          window.gapi.load('client:auth2', () => {
             this.initializeGapi().then(resolve).catch(reject);
           });
         };
@@ -63,32 +65,63 @@ class GoogleSheetsService {
   }
 
   private async initializeGapi(): Promise<void> {
-    await window.gapi.client.init({
-      apiKey: this.API_KEY,
+    console.log('Initializing GAPI with:', {
+      apiKey: this.API_KEY ? 'SET' : 'NOT_SET',
       clientId: this.CLIENT_ID,
-      discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
-      scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file'
+      origin: window.location.origin
     });
 
-    // Check if user is already signed in
-    const authInstance = window.gapi.auth2.getAuthInstance();
-    this.isAuthenticated = authInstance.isSignedIn.get();
-    
-    if (this.isAuthenticated) {
-      this.startSyncInterval();
+    try {
+      await window.gapi.client.init({
+        apiKey: this.API_KEY,
+        clientId: this.CLIENT_ID,
+        discoveryDocs: [
+          'https://sheets.googleapis.com/$discovery/rest?version=v4',
+          'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
+        ],
+        scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file'
+      });
+
+      console.log('GAPI initialized successfully');
+
+      // Check if user is already signed in
+      const authInstance = window.gapi.auth2.getAuthInstance();
+      this.isAuthenticated = authInstance.isSignedIn.get();
+      
+      console.log('Auth status:', this.isAuthenticated);
+      
+      if (this.isAuthenticated) {
+        this.startSyncInterval();
+      }
+    } catch (error) {
+      console.error('GAPI initialization failed:', error);
+      throw error;
     }
   }
 
   // Authenticate with Google
   async authenticate(): Promise<SheetsAuth> {
+    console.log('Starting authentication...');
     const authInstance = window.gapi.auth2.getAuthInstance();
     
     if (!authInstance.isSignedIn.get()) {
-      await authInstance.signIn();
+      console.log('User not signed in, prompting for sign in...');
+      try {
+        await authInstance.signIn();
+        console.log('Sign in successful');
+      } catch (error) {
+        console.error('Sign in failed:', error);
+        throw new Error(`Authentication failed: ${error.error || error}`);
+      }
     }
     
     const user = authInstance.currentUser.get();
     const authResponse = user.getAuthResponse();
+    
+    console.log('Auth response received:', {
+      hasAccessToken: !!authResponse.access_token,
+      expiresIn: authResponse.expires_in
+    });
     
     this.isAuthenticated = true;
     this.startSyncInterval();
