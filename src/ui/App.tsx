@@ -2,6 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { GoogleSheetsIntegration } from '../components/GoogleSheetsIntegration';
 import { googleSheetsService } from '../services/googleSheetsService';
 
+// Ensure service is exposed to window immediately
+if (typeof window !== 'undefined') {
+  (window as any).googleSheetsService = googleSheetsService;
+  console.log('GoogleSheetsService exposed globally');
+}
+
 export type WorkItem = {
   id: string;
   name: string;

@@ -98,37 +98,49 @@ class GoogleSheetsService {
     }
   }
 
-  // Authenticate with Google using GIS token client
+  // Authenticate with Google using GIS token client with popup mode
   async authenticate(): Promise<SheetsAuth> {
-    console.log('Starting authentication with Google Identity Services...');
+    console.log('Starting authentication with Google Identity Services (popup mode)...');
     
     // Ensure GIS is loaded
     await this.ensureGisClientLoaded();
     
     return new Promise((resolve, reject) => {
-      const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
-        client_id: this.CLIENT_ID,
-        scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
-        callback: (tokenResponse: any) => {
-          if (tokenResponse.error) {
-            console.error('Authentication failed:', tokenResponse.error);
-            reject(new Error(`Authentication failed: ${tokenResponse.error}`));
-          } else {
-            console.log('Authentication successful, setting token...');
-            window.gapi.client.setToken(tokenResponse);
-            this.isAuthenticated = true;
-            this.startSyncInterval();
-            this.saveConfig();
-            resolve({
-              access_token: tokenResponse.access_token,
-              expires_in: tokenResponse.expires_in || 3600,
-              token_type: 'Bearer'
-            });
-          }
-        },
-      });
-      
-      tokenClient.requestAccessToken({ prompt: 'consent' });
+      try {
+        const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+          client_id: this.CLIENT_ID,
+          scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
+          // Force popup mode to avoid iframe issues
+          ux_mode: 'popup',
+          callback: (tokenResponse: any) => {
+            console.log('Auth callback received:', tokenResponse);
+            if (tokenResponse.error) {
+              console.error('Authentication failed:', tokenResponse.error);
+              reject(new Error(`Authentication failed: ${tokenResponse.error}`));
+            } else {
+              console.log('Authentication successful, setting token...');
+              window.gapi.client.setToken(tokenResponse);
+              this.isAuthenticated = true;
+              this.startSyncInterval();
+              this.saveConfig();
+              resolve({
+                access_token: tokenResponse.access_token,
+                expires_in: tokenResponse.expires_in || 3600,
+                token_type: 'Bearer'
+              });
+            }
+          },
+        });
+        
+        console.log('Requesting access token...');
+        tokenClient.requestAccessToken({ 
+          prompt: 'consent',
+          hint: 'Use popup mode to avoid third-party cookie issues'
+        });
+      } catch (error) {
+        console.error('Error initializing token client:', error);
+        reject(error);
+      }
     });
   }
 
