@@ -36,9 +36,16 @@ export type TicketSummary = {
 
 export const App: React.FC = () => {
   const [isBusy, setIsBusy] = useState(false);
-  const [profiles, setProfiles] = useState<WorkItem[]>([]);
-  const [contracts, setContracts] = useState<WorkItem[]>([]);
-  const [projects, setProjects] = useState<WorkItem[]>([]);
+  // Add sample data to ensure UI elements are visible
+  const [profiles, setProfiles] = useState<WorkItem[]>([
+    { id: '1', name: 'Sample Profile Task', owner: 'Demo User', status: 'In Progress', priority: 'Medium', notes: 'This is a sample task to show UI elements' }
+  ]);
+  const [contracts, setContracts] = useState<WorkItem[]>([
+    { id: '2', name: 'Sample Contract Task', owner: 'Demo User', status: 'Not Started', priority: 'High', notes: 'Another sample task' }
+  ]);
+  const [projects, setProjects] = useState<WorkItem[]>([
+    { id: '3', name: 'Sample Project Task', owner: 'Demo User', status: 'Completed', priority: 'Low', notes: 'Completed sample task' }
+  ]);
   const [tickets, setTickets] = useState<TicketSummary | null>(null);
 
   const hasAnyData = useMemo(
