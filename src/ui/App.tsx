@@ -6,6 +6,7 @@ import { googleSheetsService } from '../services/googleSheetsService';
 if (typeof window !== 'undefined') {
   (window as any).googleSheetsService = googleSheetsService;
   console.log('GoogleSheetsService exposed globally');
+  console.log('App.tsx loaded successfully');
 }
 
 export type WorkItem = {
@@ -225,6 +226,8 @@ export const App: React.FC = () => {
       </div>
     );
   };
+
+  console.log('App component rendering...', { hasAnyData, isBusy });
 
   return (
     <div className="container">
