@@ -48,6 +48,58 @@ export const App: React.FC = () => {
   ]);
   const [tickets, setTickets] = useState<TicketSummary | null>(null);
 
+  // CSV Upload functionality for tickets
+  const handleTicketsUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const csv = e.target?.result as string;
+      const lines = csv.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) return;
+      
+      // Parse CSV data
+      let totalEmployee = 0;
+      let totalClient = 0;
+      let employeeResolved = 0;
+      let clientResolved = 0;
+      
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        const columns = line.split(',').map(col => col.replace(/"/g, '').trim());
+        
+        if (columns.length >= 4) {
+          totalEmployee += parseInt(columns[1]) || 0;
+          totalClient += parseInt(columns[2]) || 0;
+          
+          // Check if resolved columns exist (newer format)
+          if (columns.length >= 5) {
+            employeeResolved += parseInt(columns[3]) || 0;
+            clientResolved += parseInt(columns[4]) || 0;
+          }
+        }
+      }
+      
+      const total = totalEmployee + totalClient;
+      const completed = employeeResolved + clientResolved;
+      const open = total - completed;
+      const pending = Math.floor(open * 0.3); // Estimate pending as 30% of open
+      
+      const summary: TicketSummary = {
+        total,
+        completed,
+        open,
+        pending
+      };
+      
+      console.log('Parsed tickets from CSV:', summary);
+      setTickets(summary);
+    };
+    reader.readAsText(file);
+  };
+
   const hasAnyData = useMemo(
     () => profiles.length + contracts.length + projects.length > 0 || !!tickets,
     [profiles.length, contracts.length, projects.length, tickets]
@@ -319,28 +371,72 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div className="panel">
-          <h2>Google Sheets <small>Integration</small></h2>
-          <GoogleSheetsIntegration />
+      <div className="panel">
+        <h2>Google Sheets <small>Integration</small></h2>
+        <GoogleSheetsIntegration />
+      </div>
+
+      <div style={{ display: 'flex', gap: '24px' }}>
+        {/* Left side - Tickets Summary */}
+        <div style={{ width: '200px', flexShrink: 0 }}>
+          <div className="panel" style={{ padding: '16px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px' }}>Tickets Summary</h3>
+            
+            {/* Upload Button */}
+            <div style={{ marginBottom: '16px' }}>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleTicketsUpload}
+                style={{ display: 'none' }}
+                id="tickets-upload"
+              />
+              <label 
+                htmlFor="tickets-upload" 
+                className="btn sm" 
+                style={{ 
+                  display: 'block', 
+                  textAlign: 'center', 
+                  cursor: 'pointer',
+                  backgroundColor: 'var(--accent)',
+                  borderColor: 'var(--accent)'
+                }}
+              >
+                Upload CSV
+              </label>
+            </div>
+
+            {/* Vertical Metrics */}
+            {!tickets ? (
+              <div className="empty" style={{ fontSize: '12px', padding: '8px 0' }}>Upload tickets CSV file</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className="metric" style={{ padding: '8px', textAlign: 'center' }}>
+                  <div className="label" style={{ fontSize: '11px' }}>Total</div>
+                  <div className="value" style={{ fontSize: '18px', fontWeight: 'bold' }}>{tickets.total ?? 0}</div>
+                </div>
+                <div className="metric" style={{ padding: '8px', textAlign: 'center' }}>
+                  <div className="label" style={{ fontSize: '11px' }}>Open</div>
+                  <div className="value" style={{ fontSize: '16px' }}>{tickets.open ?? 0}</div>
+                </div>
+                <div className="metric" style={{ padding: '8px', textAlign: 'center' }}>
+                  <div className="label" style={{ fontSize: '11px' }}>Pending</div>
+                  <div className="value" style={{ fontSize: '16px' }}>{tickets.pending ?? 0}</div>
+                </div>
+                <div className="metric" style={{ padding: '8px', textAlign: 'center' }}>
+                  <div className="label" style={{ fontSize: '11px' }}>Completed</div>
+                  <div className="value" style={{ fontSize: '16px', color: 'var(--brand)' }}>{tickets.completed ?? 0}</div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {renderBucket('Profiles', 'profiles', profiles, setProfiles)}
-        {renderBucket('Contracts', 'contracts', contracts, setContracts)}
-        {renderBucket('Main Projects', 'projects', projects, setProjects)}
-
-        <div className="panel">
-          <h2>Tickets Summary</h2>
-          {!tickets ? (
-            <div className="empty">No ticket summary loaded.</div>
-          ) : (
-            <div className="row">
-              <div className="metric"><div className="label">Total</div><div className="value">{tickets.total ?? 0}</div></div>
-              <div className="metric"><div className="label">Completed</div><div className="value">{tickets.completed ?? 0}</div></div>
-              <div className="metric"><div className="label">Open</div><div className="value">{tickets.open ?? 0}</div></div>
-              <div className="metric"><div className="label">Pending</div><div className="value">{tickets.pending ?? 0}</div></div>
-            </div>
-          )}
+        {/* Right side - Workload Items */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {renderBucket('Profiles', 'profiles', profiles, setProfiles)}
+          {renderBucket('Contracts', 'contracts', contracts, setContracts)}
+          {renderBucket('Main Projects', 'projects', projects, setProjects)}
         </div>
       </div>
 
