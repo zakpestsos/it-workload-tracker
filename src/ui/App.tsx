@@ -460,9 +460,25 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      <div className="panel print-hide">
-        <h2>Google Sheets <small>Integration</small></h2>
-        <GoogleSheetsIntegration />
+      <div className="panel print-hide" style={{ marginBottom: '16px' }}>
+        <details style={{ cursor: 'pointer' }}>
+          <summary style={{ 
+            fontWeight: 600, 
+            fontSize: '14px', 
+            color: 'var(--muted)',
+            padding: '4px 0',
+            listStyle: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span style={{ fontSize: '12px' }}>▶</span>
+            Google Sheets Integration
+          </summary>
+          <div style={{ marginTop: '12px' }}>
+            <GoogleSheetsIntegration />
+          </div>
+        </details>
       </div>
 
       <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
