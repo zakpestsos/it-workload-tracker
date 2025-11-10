@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { GoogleSheetsIntegration } from '../components/GoogleSheetsIntegration';
+import { CalendarSessions } from '../components/CalendarSessions';
 import { googleSheetsService } from '../services/googleSheetsService';
 
 // Ensure service is exposed to window immediately
@@ -8,6 +9,15 @@ if (typeof window !== 'undefined') {
   console.log('GoogleSheetsService exposed globally');
   console.log('App.tsx loaded successfully');
 }
+
+export type WorkSession = {
+  id: string;
+  calendarEventId?: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
+  notes?: string;
+};
 
 export type WorkItem = {
   id: string;
@@ -21,6 +31,8 @@ export type WorkItem = {
   notes?: string;
   createdAt?: string;
   collapsed?: boolean;
+  workSessions?: WorkSession[];
+  calendarSynced?: boolean;
 };
 
 export type TicketSummary = {
@@ -225,6 +237,193 @@ export const App: React.FC = () => {
     if (bucket === 'projects') setProjects(map);
   };
 
+  // ==================== CALENDAR SESSION MANAGEMENT ====================
+
+  /**
+   * Sync calendar events back to tracker (two-way sync)
+   * This function checks for changes in Google Calendar and updates the tracker accordingly
+   */
+  const syncFromCalendar = async () => {
+    try {
+      console.log('Starting two-way calendar sync...');
+      const calendarEvents = await googleSheetsService.listCalendarEvents();
+      
+      // Group events by work item ID
+      const eventsByWorkItem: { [key: string]: any[] } = {};
+      calendarEvents.forEach((event: any) => {
+        const workItemId = event.extendedProperties?.private?.workloadTrackerId;
+        if (workItemId) {
+          if (!eventsByWorkItem[workItemId]) {
+            eventsByWorkItem[workItemId] = [];
+          }
+          eventsByWorkItem[workItemId].push(event);
+        }
+      });
+
+      // Update each bucket with calendar changes
+      const updateBucket = (items: WorkItem[], bucket: 'profiles'|'contracts'|'projects') => {
+        return items.map(item => {
+          const calendarEventsForItem = eventsByWorkItem[item.id] || [];
+          if (calendarEventsForItem.length === 0) return item;
+
+          // Convert calendar events to work sessions
+          const updatedSessions: WorkSession[] = calendarEventsForItem.map((event: any) => {
+            const startDateTime = new Date(event.start.dateTime || event.start.date);
+            const endDateTime = new Date(event.end.dateTime || event.end.date);
+            
+            return {
+              id: event.extendedProperties?.private?.workloadSessionId || `session-${Date.now()}`,
+              calendarEventId: event.id,
+              date: startDateTime.toISOString().split('T')[0],
+              startTime: startDateTime.toTimeString().slice(0, 5),
+              endTime: endDateTime.toTimeString().slice(0, 5),
+              notes: event.description || ''
+            };
+          });
+
+          return {
+            ...item,
+            workSessions: updatedSessions,
+            calendarSynced: true
+          };
+        });
+      };
+
+      setProfiles(prev => updateBucket(prev, 'profiles'));
+      setContracts(prev => updateBucket(prev, 'contracts'));
+      setProjects(prev => updateBucket(prev, 'projects'));
+
+      // Save updated data to sheets
+      await saveAllToSheets();
+
+      console.log('Two-way calendar sync completed successfully');
+    } catch (error) {
+      console.error('Error syncing from calendar:', error);
+      // Don't throw error to avoid disrupting the UI
+    }
+  };
+
+  const handleAddSession = async (bucket: 'profiles'|'contracts'|'projects', itemId: string, sessionData: Omit<WorkSession, 'id'>) => {
+    try {
+      // Find the work item
+      const items = bucket === 'profiles' ? profiles : bucket === 'contracts' ? contracts : projects;
+      const workItem = items.find(i => i.id === itemId);
+      if (!workItem) throw new Error('Work item not found');
+
+      // Create session with ID
+      const session: WorkSession = {
+        ...sessionData,
+        id: `session-${Date.now()}`
+      };
+
+      // Create calendar event
+      const eventId = await googleSheetsService.createCalendarEvent(workItem, { ...session, bucket });
+      session.calendarEventId = eventId;
+
+      // Update work item with new session
+      const updatedItem = {
+        ...workItem,
+        workSessions: [...(workItem.workSessions || []), session],
+        calendarSynced: true
+      };
+
+      // Update state
+      const updateItems = (arr: WorkItem[]) => arr.map(i => i.id === itemId ? updatedItem : i);
+      if (bucket === 'profiles') setProfiles(updateItems);
+      if (bucket === 'contracts') setContracts(updateItems);
+      if (bucket === 'projects') setProjects(updateItems);
+
+      // Save to sheets
+      await saveAllToSheets();
+
+      console.log('Session added successfully:', session);
+    } catch (error) {
+      console.error('Error adding session:', error);
+      throw error;
+    }
+  };
+
+  const handleUpdateSession = async (bucket: 'profiles'|'contracts'|'projects', itemId: string, sessionId: string, sessionData: Partial<WorkSession>) => {
+    try {
+      // Find the work item
+      const items = bucket === 'profiles' ? profiles : bucket === 'contracts' ? contracts : projects;
+      const workItem = items.find(i => i.id === itemId);
+      if (!workItem) throw new Error('Work item not found');
+
+      // Find and update session
+      const sessions = workItem.workSessions || [];
+      const sessionIndex = sessions.findIndex(s => s.id === sessionId);
+      if (sessionIndex === -1) throw new Error('Session not found');
+
+      const updatedSession = { ...sessions[sessionIndex], ...sessionData };
+
+      // Update calendar event if it exists
+      if (updatedSession.calendarEventId) {
+        await googleSheetsService.updateCalendarEvent(updatedSession.calendarEventId, updatedSession, workItem);
+      }
+
+      // Update work item
+      const updatedSessions = [...sessions];
+      updatedSessions[sessionIndex] = updatedSession;
+      const updatedItem = { ...workItem, workSessions: updatedSessions };
+
+      // Update state
+      const updateItems = (arr: WorkItem[]) => arr.map(i => i.id === itemId ? updatedItem : i);
+      if (bucket === 'profiles') setProfiles(updateItems);
+      if (bucket === 'contracts') setContracts(updateItems);
+      if (bucket === 'projects') setProjects(updateItems);
+
+      // Save to sheets
+      await saveAllToSheets();
+
+      console.log('Session updated successfully:', updatedSession);
+    } catch (error) {
+      console.error('Error updating session:', error);
+      throw error;
+    }
+  };
+
+  const handleDeleteSession = async (bucket: 'profiles'|'contracts'|'projects', itemId: string, sessionId: string) => {
+    try {
+      // Find the work item
+      const items = bucket === 'profiles' ? profiles : bucket === 'contracts' ? contracts : projects;
+      const workItem = items.find(i => i.id === itemId);
+      if (!workItem) throw new Error('Work item not found');
+
+      // Find session
+      const sessions = workItem.workSessions || [];
+      const session = sessions.find(s => s.id === sessionId);
+      if (!session) throw new Error('Session not found');
+
+      // Delete calendar event if it exists
+      if (session.calendarEventId) {
+        await googleSheetsService.deleteCalendarEvent(session.calendarEventId);
+      }
+
+      // Remove session from work item
+      const updatedSessions = sessions.filter(s => s.id !== sessionId);
+      const updatedItem = { 
+        ...workItem, 
+        workSessions: updatedSessions,
+        calendarSynced: updatedSessions.length > 0
+      };
+
+      // Update state
+      const updateItems = (arr: WorkItem[]) => arr.map(i => i.id === itemId ? updatedItem : i);
+      if (bucket === 'profiles') setProfiles(updateItems);
+      if (bucket === 'contracts') setContracts(updateItems);
+      if (bucket === 'projects') setProjects(updateItems);
+
+      // Save to sheets
+      await saveAllToSheets();
+
+      console.log('Session deleted successfully');
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     console.log('App initialized, exposing debug functions...');
     
@@ -354,6 +553,15 @@ export const App: React.FC = () => {
                   />
                 </div>
 
+                {/* Calendar Sessions */}
+                <CalendarSessions
+                  workItem={item}
+                  bucket={bucketKey}
+                  onSessionAdd={(session) => handleAddSession(bucketKey, item.id, session)}
+                  onSessionUpdate={(sessionId, session) => handleUpdateSession(bucketKey, item.id, sessionId, session)}
+                  onSessionDelete={(sessionId) => handleDeleteSession(bucketKey, item.id, sessionId)}
+                />
+
                 {/* Secondary info badges and actions */}
                 <div className="work-card-footer">
                   <div className="work-card-badges">
@@ -457,6 +665,9 @@ export const App: React.FC = () => {
         <div className="controls">
           <button className="btn" onClick={loadAllFromSheets} disabled={isBusy}>{isBusy ? 'Loading…' : 'Reload from Sheets'}</button>
           <button className="btn" onClick={saveAllToSheets} disabled={isBusy}>{isBusy ? 'Saving…' : 'Save to Sheets'}</button>
+          <button className="btn" onClick={syncFromCalendar} disabled={isBusy} title="Sync changes from Google Calendar">
+            {isBusy ? 'Syncing…' : '📅 Sync Calendar'}
+          </button>
         </div>
       </header>
 

@@ -19,7 +19,8 @@ export interface SheetsAuth {
 class GoogleSheetsService {
   private config: SheetsConfig | null = null;
   private isAuthenticated = false;
-  private syncInterval: NodeJS.Timeout | null = null;
+  private syncInterval: number | null = null;
+  private calendarId: string | null = null;
   // Prefer environment variables provided by Vite; fall back to defined values if present
   private readonly CLIENT_ID: string = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '304831967056-kvdtr66m0ta8lm6gin3gf4f5q0naf47n.apps.googleusercontent.com';
   private readonly API_KEY: string = (import.meta as any).env?.VITE_GOOGLE_API_KEY || 'AIzaSyARpNQLLER7nub09yNmcn4ROZMYG2ZEo48';
@@ -32,6 +33,10 @@ class GoogleSheetsService {
     TICKETS: 'Tickets Summary',
     METADATA: 'App Metadata'
   };
+
+  // Calendar constants
+  private readonly CALENDAR_NAME = 'IT Workload Tracker';
+  private readonly CALENDAR_DESCRIPTION = 'Work sessions for IT projects, profiles, and contracts';
 
   constructor() {
     this.loadConfig();
@@ -79,7 +84,8 @@ class GoogleSheetsService {
         apiKey: this.API_KEY,
         discoveryDocs: [
           'https://sheets.googleapis.com/$discovery/rest?version=v4',
-          'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
+          'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
+          'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'
         ]
       });
 
@@ -109,7 +115,7 @@ class GoogleSheetsService {
       try {
         const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
           client_id: this.CLIENT_ID,
-          scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
+          scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/calendar',
           // Force popup mode to avoid iframe issues
           ux_mode: 'popup',
           callback: (tokenResponse: any) => {
@@ -222,7 +228,8 @@ class GoogleSheetsService {
             { userEnteredValue: { stringValue: 'Progress' } },
             { userEnteredValue: { stringValue: 'Notes' } },
             { userEnteredValue: { stringValue: 'Created At' } },
-            { userEnteredValue: { stringValue: 'Updated At' } }
+            { userEnteredValue: { stringValue: 'Updated At' } },
+            { userEnteredValue: { stringValue: 'Calendar Sessions' } }
           ]
         }]
       }]
@@ -396,7 +403,8 @@ class GoogleSheetsService {
       item.progress?.toString() || '0',
       item.notes || '',
       item.createdAt || new Date().toISOString(),
-      new Date().toISOString() // Updated At
+      new Date().toISOString(), // Updated At
+      JSON.stringify(item.workSessions || []) // Calendar Sessions as JSON
     ]);
 
     console.log(`Prepared values for ${sheetName}:`, values);
@@ -406,12 +414,12 @@ class GoogleSheetsService {
       console.log(`Clearing existing data in ${sheetName}...`);
       await window.gapi.client.sheets.spreadsheets.values.clear({
         spreadsheetId: this.config.spreadsheetId,
-        range: `${sheetName}!A2:J`
+        range: `${sheetName}!A2:K`
       });
 
       // Add new data
       if (values.length > 0) {
-        const range = `${sheetName}!A2:J${values.length + 1}`;
+        const range = `${sheetName}!A2:K${values.length + 1}`;
         console.log(`Updating range: ${range}`);
         
         const response = await window.gapi.client.sheets.spreadsheets.values.update({
@@ -473,7 +481,7 @@ class GoogleSheetsService {
     }
 
     const sheetName = this.getSheetNameForBucket(bucketKey);
-    const range = `${sheetName}!A2:J`;
+    const range = `${sheetName}!A2:K`;
 
     try {
       const response = await window.gapi.client.sheets.spreadsheets.values.get({
@@ -482,19 +490,30 @@ class GoogleSheetsService {
       });
 
       const rows = response.result.values || [];
-      return rows.map((row, index) => ({
-        id: `${bucketKey}-${index}`,
-        name: row[0] || '',
-        owner: row[1] || '',
-        status: row[2] || 'Not Started',
-        priority: row[3] || 'Medium',
-        startDate: row[4] || '',
-        dueDate: row[5] || '',
-        progress: parseInt(row[6] || '0'),
-        notes: row[7] || '',
-        createdAt: row[8] || new Date().toISOString(),
-        collapsed: true
-      }));
+      return rows.map((row: any[], index: number) => {
+        let workSessions = [];
+        try {
+          workSessions = row[10] ? JSON.parse(row[10]) : [];
+        } catch (e) {
+          console.warn('Failed to parse calendar sessions:', e);
+        }
+        
+        return {
+          id: `${bucketKey}-${index}`,
+          name: row[0] || '',
+          owner: row[1] || '',
+          status: row[2] || 'Not Started',
+          priority: row[3] || 'Medium',
+          startDate: row[4] || '',
+          dueDate: row[5] || '',
+          progress: parseInt(row[6] || '0'),
+          notes: row[7] || '',
+          createdAt: row[8] || new Date().toISOString(),
+          collapsed: true,
+          workSessions,
+          calendarSynced: workSessions.length > 0
+        };
+      });
     } catch (error) {
       console.error('Error loading from sheets:', error);
       return [];
@@ -525,7 +544,7 @@ class GoogleSheetsService {
         pending: 0
       };
 
-      rows.forEach(row => {
+      rows.forEach((row: any[]) => {
         const metric = row[0];
         const value = parseInt(row[1] || '0');
         const lastImported = row[2];
@@ -734,6 +753,217 @@ class GoogleSheetsService {
     };
     this.saveConfig();
     console.log('Specific sheet configuration saved');
+  }
+
+  // ==================== CALENDAR API METHODS ====================
+
+  /**
+   * Get or create the "IT Workload Tracker" calendar
+   */
+  async getOrCreateWorkloadCalendar(): Promise<string> {
+    if (!this.isAuthenticated) {
+      throw new Error('Not authenticated with Google');
+    }
+
+    // Check if we have a cached calendar ID
+    const cachedCalendarId = localStorage.getItem('workload_calendar_id');
+    if (cachedCalendarId) {
+      try {
+        // Verify the calendar still exists
+        await (window.gapi.client as any).calendar.calendars.get({
+          calendarId: cachedCalendarId
+        });
+        this.calendarId = cachedCalendarId;
+        console.log('Using cached calendar ID:', cachedCalendarId);
+        return cachedCalendarId;
+      } catch (error) {
+        console.warn('Cached calendar not found, will create new one');
+        localStorage.removeItem('workload_calendar_id');
+      }
+    }
+
+    // List all calendars to find our workload calendar
+    try {
+      const response = await (window.gapi.client as any).calendar.calendarList.list();
+      const calendars = response.result.items || [];
+      
+      const workloadCalendar = calendars.find((cal: any) => 
+        cal.summary === this.CALENDAR_NAME
+      );
+
+      if (workloadCalendar) {
+        this.calendarId = workloadCalendar.id;
+        localStorage.setItem('workload_calendar_id', workloadCalendar.id);
+        console.log('Found existing calendar:', workloadCalendar.id);
+        return workloadCalendar.id;
+      }
+    } catch (error) {
+      console.error('Error listing calendars:', error);
+    }
+
+    // Create new calendar
+    try {
+      const response = await (window.gapi.client as any).calendar.calendars.insert({
+        resource: {
+          summary: this.CALENDAR_NAME,
+          description: this.CALENDAR_DESCRIPTION,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      });
+
+      this.calendarId = response.result.id;
+      localStorage.setItem('workload_calendar_id', response.result.id);
+      console.log('Created new calendar:', response.result.id);
+      return response.result.id;
+    } catch (error) {
+      console.error('Error creating calendar:', error);
+      throw new Error('Failed to create workload calendar');
+    }
+  }
+
+  /**
+   * Create a calendar event for a work session
+   */
+  async createCalendarEvent(workItem: any, session: any): Promise<string> {
+    if (!this.isAuthenticated) {
+      throw new Error('Not authenticated with Google');
+    }
+
+    const calendarId = await this.getOrCreateWorkloadCalendar();
+    
+    // Parse date and time
+    const startDateTime = `${session.date}T${session.startTime}:00`;
+    const endDateTime = `${session.date}T${session.endTime}:00`;
+
+    const event = {
+      summary: workItem.name || 'Untitled Work Item',
+      description: session.notes || workItem.notes || '',
+      start: {
+        dateTime: startDateTime,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      },
+      end: {
+        dateTime: endDateTime,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      },
+      extendedProperties: {
+        private: {
+          workloadTrackerId: workItem.id,
+          workloadTrackerBucket: session.bucket || 'unknown',
+          workloadSessionId: session.id
+        }
+      },
+      colorId: '9' // Blue color for work items
+    };
+
+    try {
+      const response = await (window.gapi.client as any).calendar.events.insert({
+        calendarId: calendarId,
+        resource: event
+      });
+
+      console.log('Created calendar event:', response.result.id);
+      return response.result.id;
+    } catch (error) {
+      console.error('Error creating calendar event:', error);
+      throw new Error('Failed to create calendar event');
+    }
+  }
+
+  /**
+   * Update an existing calendar event
+   */
+  async updateCalendarEvent(eventId: string, session: any, workItem: any): Promise<void> {
+    if (!this.isAuthenticated) {
+      throw new Error('Not authenticated with Google');
+    }
+
+    const calendarId = await this.getOrCreateWorkloadCalendar();
+    
+    const startDateTime = `${session.date}T${session.startTime}:00`;
+    const endDateTime = `${session.date}T${session.endTime}:00`;
+
+    const event = {
+      summary: workItem.name || 'Untitled Work Item',
+      description: session.notes || workItem.notes || '',
+      start: {
+        dateTime: startDateTime,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      },
+      end: {
+        dateTime: endDateTime,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      }
+    };
+
+    try {
+      await (window.gapi.client as any).calendar.events.patch({
+        calendarId: calendarId,
+        eventId: eventId,
+        resource: event
+      });
+
+      console.log('Updated calendar event:', eventId);
+    } catch (error) {
+      console.error('Error updating calendar event:', error);
+      throw new Error('Failed to update calendar event');
+    }
+  }
+
+  /**
+   * Delete a calendar event
+   */
+  async deleteCalendarEvent(eventId: string): Promise<void> {
+    if (!this.isAuthenticated) {
+      throw new Error('Not authenticated with Google');
+    }
+
+    const calendarId = await this.getOrCreateWorkloadCalendar();
+
+    try {
+      await (window.gapi.client as any).calendar.events.delete({
+        calendarId: calendarId,
+        eventId: eventId
+      });
+
+      console.log('Deleted calendar event:', eventId);
+    } catch (error) {
+      console.error('Error deleting calendar event:', error);
+      throw new Error('Failed to delete calendar event');
+    }
+  }
+
+  /**
+   * List all calendar events from the workload calendar
+   */
+  async listCalendarEvents(): Promise<any[]> {
+    if (!this.isAuthenticated) {
+      throw new Error('Not authenticated with Google');
+    }
+
+    const calendarId = await this.getOrCreateWorkloadCalendar();
+
+    try {
+      const response = await (window.gapi.client as any).calendar.events.list({
+        calendarId: calendarId,
+        timeMin: new Date().toISOString(),
+        maxResults: 250,
+        singleEvents: true,
+        orderBy: 'startTime'
+      });
+
+      return response.result.items || [];
+    } catch (error) {
+      console.error('Error listing calendar events:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get calendar ID for external use
+   */
+  getCalendarId(): string | null {
+    return this.calendarId;
   }
 }
 
