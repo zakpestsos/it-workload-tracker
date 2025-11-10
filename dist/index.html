@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <title>IT Workload Tracker v1.3 - FINAL</title>
+    <title>IT Workload Tracker v2.0 - Meeting Optimized</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -229,13 +229,247 @@
       .section-metric.completed .value { color: #22c55e; }
       .footer-note { color: var(--muted); font-size: 12px; margin-top: 18px; }
       .print-hide { display: block; }
+      
+      /* Card-based layout styles */
+      .work-cards-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 12px;
+      }
+      
+      .work-card {
+        background: rgba(2,6,23,0.4);
+        border: 1px solid var(--ring);
+        border-radius: 10px;
+        padding: 16px;
+        transition: all 0.2s ease;
+      }
+      
+      .work-card:hover {
+        border-color: rgba(96,165,250,0.4);
+        background: rgba(2,6,23,0.5);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      }
+      
+      /* Name section - Large and prominent */
+      .work-card-name-section {
+        margin-bottom: 12px;
+      }
+      
+      .work-card-name-input {
+        width: 100%;
+        background: rgba(2,6,23,0.6);
+        border: 1px solid var(--ring);
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        transition: all 0.2s ease;
+      }
+      
+      .work-card-name-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: rgba(2,6,23,0.8);
+        box-shadow: 0 0 0 3px rgba(96,165,250,0.15);
+      }
+      
+      .work-card-name-input::placeholder {
+        color: var(--muted);
+        font-weight: 600;
+      }
+      
+      /* Notes section - Prominent and auto-expanding */
+      .work-card-notes-section {
+        margin-bottom: 12px;
+      }
+      
+      .work-card-notes-textarea {
+        width: 100%;
+        min-height: 80px;
+        max-height: 300px;
+        background: rgba(2,6,23,0.6);
+        border: 1px solid var(--ring);
+        border-radius: 8px;
+        padding: 12px 16px;
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--text);
+        resize: vertical;
+        transition: all 0.2s ease;
+        font-family: inherit;
+      }
+      
+      .work-card-notes-textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: rgba(2,6,23,0.8);
+        box-shadow: 0 0 0 3px rgba(96,165,250,0.15);
+      }
+      
+      .work-card-notes-textarea::placeholder {
+        color: var(--muted);
+      }
+      
+      /* Footer with badges and actions */
+      .work-card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      
+      .work-card-badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+        flex: 1;
+      }
+      
+      /* Badge styles */
+      .info-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(2,6,23,0.5);
+        border: 1px solid var(--ring);
+        border-radius: 12px;
+        padding: 4px 10px;
+        font-size: 11px;
+        transition: all 0.2s ease;
+      }
+      
+      .info-badge:hover {
+        background: rgba(2,6,23,0.7);
+      }
+      
+      .badge-label {
+        color: var(--muted);
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      
+      .badge-input {
+        background: transparent;
+        border: none;
+        color: var(--text);
+        font-size: 11px;
+        padding: 0;
+        width: 80px;
+        font-weight: 500;
+      }
+      
+      .badge-input:focus {
+        outline: none;
+        color: var(--accent);
+      }
+      
+      .badge-select {
+        background: transparent;
+        border: none;
+        color: var(--text);
+        font-size: 11px;
+        padding: 0;
+        padding-right: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right center;
+        background-repeat: no-repeat;
+        background-size: 12px;
+      }
+      
+      .badge-select:focus {
+        outline: none;
+      }
+      
+      .badge-select option {
+        background: rgba(2,6,23,0.95);
+        color: var(--text);
+      }
+      
+      .badge-date-input {
+        background: transparent;
+        border: none;
+        color: var(--text);
+        font-size: 11px;
+        padding: 0;
+        width: 90px;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      
+      .badge-date-input:focus {
+        outline: none;
+        color: var(--accent);
+      }
+      
+      .badge-date-input::-webkit-calendar-picker-indicator {
+        filter: invert(0.6);
+        cursor: pointer;
+      }
+      
+      /* Action buttons */
+      .work-card-actions {
+        display: flex;
+        gap: 6px;
+      }
+      
+      .action-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .done-btn {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: white;
+      }
+      
+      .done-btn:hover {
+        background: linear-gradient(135deg, #16a34a, #15803d);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(34,197,94,0.3);
+      }
+      
+      .delete-btn {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+      }
+      
+      .delete-btn:hover {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(239,68,68,0.3);
+      }
+      
+      /* Collapsible tickets sidebar styles */
+      .tickets-sidebar-collapsed,
+      .tickets-sidebar-expanded {
+        transition: width 0.3s ease;
+      }
+      
       @media print {
         body { background: white; color: black; }
         .print-hide { display: none !important; }
         .panel { box-shadow: none; background: white; border-color: #e5e7eb; }
+        .work-card { page-break-inside: avoid; }
       }
     </style>
-    <script type="module" crossorigin src="/it-workload-tracker/assets/index-BfOCs3J7.js"></script>
+    <script type="module" crossorigin src="/it-workload-tracker/assets/index-BMi_j8fp.js"></script>
   </head>
   <body>
     <div id="root"></div>
