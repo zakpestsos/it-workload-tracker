@@ -460,12 +460,12 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      <div className="panel">
+      <div className="panel print-hide">
         <h2>Google Sheets <small>Integration</small></h2>
         <GoogleSheetsIntegration />
       </div>
 
-      <div style={{ display: 'flex', gap: '16px' }}>
+      <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
         {/* Left side - Tickets Summary (Collapsible) */}
         <div 
           className={ticketsPanelCollapsed ? 'tickets-sidebar-collapsed' : 'tickets-sidebar-expanded'}
