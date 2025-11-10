@@ -490,15 +490,20 @@ class GoogleSheetsService {
       });
 
       const rows = response.result.values || [];
+      console.log(`Loaded ${rows.length} rows from ${sheetName}`);
+      
       return rows.map((row: any[], index: number) => {
         let workSessions = [];
-        try {
-          workSessions = row[10] ? JSON.parse(row[10]) : [];
-        } catch (e) {
-          console.warn('Failed to parse calendar sessions:', e);
+        // Only try to parse calendar sessions if column K exists and has data
+        if (row.length > 10 && row[10]) {
+          try {
+            workSessions = JSON.parse(row[10]);
+          } catch (e) {
+            console.warn(`Failed to parse calendar sessions for row ${index}:`, e);
+          }
         }
         
-        return {
+        const item = {
           id: `${bucketKey}-${index}`,
           name: row[0] || '',
           owner: row[1] || '',
@@ -513,6 +518,9 @@ class GoogleSheetsService {
           workSessions,
           calendarSynced: workSessions.length > 0
         };
+        
+        console.log(`Loaded item ${index}:`, item.name);
+        return item;
       });
     } catch (error) {
       console.error('Error loading from sheets:', error);
