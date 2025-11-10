@@ -80,12 +80,13 @@ class GoogleSheetsService {
     });
 
     try {
+      // Initialize with Sheets and Drive APIs only
+      // Calendar API will be loaded on-demand when needed
       await window.gapi.client.init({
         apiKey: this.API_KEY,
         discoveryDocs: [
           'https://sheets.googleapis.com/$discovery/rest?version=v4',
-          'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
-          'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'
+          'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
         ]
       });
 
@@ -766,12 +767,34 @@ class GoogleSheetsService {
   // ==================== CALENDAR API METHODS ====================
 
   /**
+   * Load Calendar API on-demand
+   */
+  private async ensureCalendarApiLoaded(): Promise<void> {
+    // Check if calendar API is already loaded
+    if ((window.gapi.client as any).calendar) {
+      return;
+    }
+
+    try {
+      console.log('Loading Calendar API...');
+      await window.gapi.client.load('calendar', 'v3');
+      console.log('Calendar API loaded successfully');
+    } catch (error) {
+      console.error('Failed to load Calendar API:', error);
+      throw new Error('Calendar API not available. Please enable it in Google Cloud Console.');
+    }
+  }
+
+  /**
    * Get or create the "IT Workload Tracker" calendar
    */
   async getOrCreateWorkloadCalendar(): Promise<string> {
     if (!this.isAuthenticated) {
       throw new Error('Not authenticated with Google');
     }
+
+    // Ensure Calendar API is loaded
+    await this.ensureCalendarApiLoaded();
 
     // Check if we have a cached calendar ID
     const cachedCalendarId = localStorage.getItem('workload_calendar_id');

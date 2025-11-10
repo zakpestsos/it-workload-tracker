@@ -172,10 +172,22 @@ export const App: React.FC = () => {
         googleSheetsService.loadTicketsSummary()
       ]);
       console.log('Loaded data:', { profiles: p.length, contracts: c.length, projects: pr.length, tickets: t });
-      setProfiles(p);
-      setContracts(c);
-      setProjects(pr);
-      setTickets(t);
+      
+      // Only update if we got data
+      if (p.length > 0 || c.length > 0 || pr.length > 0) {
+        setProfiles(p);
+        setContracts(c);
+        setProjects(pr);
+      } else {
+        console.warn('No data loaded from sheets, keeping current data');
+      }
+      
+      if (t) {
+        setTickets(t);
+      }
+    } catch (error) {
+      console.error('Error loading from sheets:', error);
+      alert(`Failed to load data from sheets: ${error}`);
     } finally {
       setIsBusy(false);
     }
