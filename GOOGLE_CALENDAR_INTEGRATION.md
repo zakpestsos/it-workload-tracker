@@ -275,3 +275,5 @@ Extend sheet structure to store calendar data:
 - Two-way sync keeps everything in sync
 - Manual control prevents unwanted calendar clutter
 
+
+

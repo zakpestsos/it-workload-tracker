@@ -394,19 +394,24 @@ class GoogleSheetsService {
     const sheetName = this.getSheetNameForBucket(bucketKey);
     console.log(`Using sheet name: ${sheetName}`);
     
-    const values = items.map(item => [
-      item.name,
-      item.owner,
-      item.status,
-      item.priority,
-      item.startDate || '',
-      item.dueDate || '',
-      item.progress?.toString() || '0',
-      item.notes || '',
-      item.createdAt || new Date().toISOString(),
-      new Date().toISOString(), // Updated At
-      JSON.stringify(item.workSessions || []) // Calendar Sessions as JSON
-    ]);
+    const values = items.map(item => {
+      const sessionsJson = JSON.stringify(item.workSessions || []);
+      console.log(`💾 Saving "${item.name}" with ${(item.workSessions || []).length} sessions:`, sessionsJson);
+      
+      return [
+        item.name,
+        item.owner,
+        item.status,
+        item.priority,
+        item.startDate || '',
+        item.dueDate || '',
+        item.progress?.toString() || '0',
+        item.notes || '',
+        item.createdAt || new Date().toISOString(),
+        new Date().toISOString(), // Updated At
+        sessionsJson // Calendar Sessions as JSON
+      ];
+    });
 
     console.log(`Prepared values for ${sheetName}:`, values);
 
@@ -499,9 +504,12 @@ class GoogleSheetsService {
         if (row.length > 10 && row[10]) {
           try {
             workSessions = JSON.parse(row[10]);
+            console.log(`✅ Parsed ${workSessions.length} calendar sessions for "${row[0]}"`, workSessions);
           } catch (e) {
             console.warn(`Failed to parse calendar sessions for row ${index}:`, e);
           }
+        } else {
+          console.log(`ℹ️ No calendar sessions data in column K for "${row[0]}" (row length: ${row.length})`);
         }
         
         const item = {
@@ -520,7 +528,7 @@ class GoogleSheetsService {
           calendarSynced: workSessions.length > 0
         };
         
-        console.log(`Loaded item ${index}:`, item.name);
+        console.log(`Loaded item ${index}:`, item.name, `(${workSessions.length} sessions)`);
         return item;
       });
     } catch (error) {
